@@ -1,6 +1,6 @@
 # Flash IPA 
 
-Official implementation of Flash IPA, which enhances the efficiency of the IPA module proposed in AlphaFold2. Our module **reduces training and inference time** and **memory requirements** of standard models. It also facilitates training on **longer sequences exceeding 10,000 NT**.
+Official implementation of Flash IPA, which enhances the efficiency of the IPA module proposed in AlphaFold2. Our module **reduces training and inference time** and **memory requirements** of standard models. It also facilitates training on **longer sequences exceeding 10,000 in length**.
 
 ![scalling](img/scaling.jpg)
 
