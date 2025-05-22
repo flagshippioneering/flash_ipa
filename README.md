@@ -1,15 +1,15 @@
-# Flash IPA 
+# FlashIPA 
 
-Official implementation of Flash IPA, which enhances the efficiency of the IPA module. Our module **reduces training and inference time** and **memory requirements** of standard models. It also facilitates training on **longer sequences exceeding 10,000 in length**.
+Official implementation of FlashIPA, which enhances the efficiency of the IPA module. Our module **reduces training and inference time** and **memory requirements** of standard models. It also facilitates training on **longer sequences exceeding 10,000 in length**.
 
 ![scalling](img/scaling.jpg)
 
-## How to use Flash IPA?
+## How to use FlashIPA?
 
-After following the setup guide, Flash IPA can be integrated into any model using the IPA module by replacing any original IPA layer with our implementation. The primary input difference from the standard IPA module is the **z_factor**, which represents a memory-efficient graph edge embedding. A complete example of an IPA model is provided in [model.py](src/flash_ipa/model.py), including the full computation of the **z_factor**.
+After following the setup guide, FlashIPA can be integrated into any model using the IPA module by replacing any original IPA layer with our implementation. The primary input difference from the standard IPA module is the **z_factor**, which represents a memory-efficient graph edge embedding. A complete example of an IPA model is provided in [model.py](src/flash_ipa/model.py), including the full computation of the **z_factor**.
 
 
-### Flash IPA Model
+### FlashIPA Model
 ```python
 from flash_ipa.ipa import IPAConfig
 from flash_ipa.model import Model, ModelConfig
@@ -32,7 +32,7 @@ output = model(batch)
 ```
 
 
-### Flash IPA
+### FlashIPA
 ```python
 from flash_ipa.ipa import InvariantPointAttention, IPAConfig
 
