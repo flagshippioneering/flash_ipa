@@ -1,6 +1,6 @@
 # Flash IPA 
 
-Official implementation of Flash IPA, which enhances the efficiency of the IPA module proposed in AlphaFold2. Our module **reduces training and inference time** and **memory requirements** of standard models. It also facilitates training on **longer sequences exceeding 10,000 in length**.
+Official implementation of Flash IPA, which enhances the efficiency of the IPA module. Our module **reduces training and inference time** and **memory requirements** of standard models. It also facilitates training on **longer sequences exceeding 10,000 in length**.
 
 ![scalling](img/scaling.jpg)
 
@@ -85,3 +85,13 @@ uv sync
 ## License
 
 This project is licensed under MIT License. See [LICENSE](LICENSE.txt) for more details.
+
+## Citation
+
+@article{liu2025flashipa,
+  title={Flash Invariant Point Attention},
+  author={Liu, Andrew and Elaldi, Axel and Franklin, Nicholas T and Russell, Nathan and Atwal, Gurinder S and Ban, Yih-En A and Viessmann, Olivia},
+  journal={arXiv preprint arXiv:2505.11580},
+  year={2025},
+  url={https://arxiv.org/abs/2505.11580}
+}
