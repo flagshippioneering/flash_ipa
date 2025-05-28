@@ -1,6 +1,6 @@
 # FlashIPA 
 
-Official implementation of FlashIPA, which enhances the efficiency of the IPA module. Our module **reduces training and inference time** and **memory requirements** of standard models. It also facilitates training on **longer sequences exceeding 10,000 in length**.
+Official implementation of FlashIPA, which enhances the efficiency of the IPA module. Our module **reduces training and inference time** and **memory requirements** of standard models.
 
 ![scalling](img/scaling.jpg)
 
