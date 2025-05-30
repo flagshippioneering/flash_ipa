@@ -7,38 +7,43 @@ import torch
 from torch import nn
 from flash_ipa import utils
 from einops import rearrange
+from typing import Optional
 from dataclasses import dataclass
+from flash_ipa.factorizer import LinearFactorizer
 
 
 @dataclass
 class EdgeEmbedderConfig:
-    z_factor_rank: int = 2
-    single_bias_transition_n: int = 2
-    c_s: int = 256
-    c_p: int = 128
-    relpos_k: int = 64
-    use_rbf: bool = True
-    num_rbf: int = 32
-    feat_dim: int = 64
-    num_bins: int = 22
-    self_condition: bool = True
-    k: int = 10
+    z_factor_rank: int = 2  # Rank of the factorization of the edge embedding
+    single_bias_transition_n: int = 2  # Not used
+    c_s: int = 256  # Size of the node embedding
+    c_p: int = 128  # Size of the edge embedding
+    relpos_k: int = 64  # Not used
+    use_rbf: bool = True  # Not used
+    num_rbf: int = 32  # Not used
+    feat_dim: int = 64  # Hidden dimension of the edge embedder
+    num_bins: int = 22  # Number of bins for the distogram
+    self_condition: bool = True  # Not used
+    mode: str = "flash_1d_bias"  # "orig_no_bias", "orig_2d_bias", "flash_no_bias", "flash_1d_bias", "flash_2d_factorize_bias"
+    k: int = 10  # Number of nearest neighbors for the distogram
+    max_len: Optional[int] = None  # Maximum length of the input sequence
 
 
 class EdgeEmbedder(nn.Module):
 
-    def __init__(self, module_cfg, mode):
+    def __init__(self, module_cfg):
         super(EdgeEmbedder, self).__init__()
         self._cfg = module_cfg
 
         self.c_s = self._cfg.c_s
         self.c_p = self._cfg.c_p
         self.feat_dim = self._cfg.feat_dim
-        self.mode = mode
+        self.mode = self._cfg.mode
+        self.max_len = self._cfg.max_len
 
         total_edge_feats = self.feat_dim * 3 + self._cfg.num_bins * 2
 
-        if self.mode == "1d":
+        if self.mode == "flash_1d_bias":
             self.k = self._cfg.k
             self.z_factor_rank = self._cfg.z_factor_rank
             self.linear_s_p = nn.Linear(self.c_s, self.feat_dim * self.z_factor_rank * 2)
@@ -49,11 +54,23 @@ class EdgeEmbedder(nn.Module):
             self.linear_sc_distogram = nn.Linear(
                 self.k * (self._cfg.num_bins + self.feat_dim), self._cfg.num_bins * self.z_factor_rank * 2
             )
-        elif self.mode == "2d":
+        elif self.mode in ["orig_2d_bias", "flash_2d_factorize_bias"]:
             self.linear_s_p = nn.Linear(self.c_s, self.feat_dim)
             self.linear_relpos = nn.Linear(self.feat_dim, self.feat_dim)
+            if self.mode == "flash_2d_factorize_bias":
+                assert self.max_len is not None, "max_len must be provided for flash_2d_factorize_bias mode"
+                self.z_factor_rank = self._cfg.z_factor_rank
+                self.factorizer = LinearFactorizer(
+                    in_L=self.max_len,
+                    in_D=self.c_p,
+                    target_rank=self.z_factor_rank,
+                    target_inner_dim=self.c_p,
+                )
         else:
-            raise ValueError(f"Unknown edge embedder type: {self.mode}. Must be '1d' or '2d'.")
+            assert self.mode in [
+                "orig_no_bias",
+                "flash_no_bias",
+            ], f"Unknown edge embedder type: {self.mode}. Must be 'orig_no_bias', 'orig_2d_bias', 'flash_no_bias', 'flash_1d_bias', or 'flash_2d_factorize_bias'."
 
         self.edge_embedder = nn.Sequential(
             nn.Linear(total_edge_feats, self.c_p),
@@ -82,17 +99,52 @@ class EdgeEmbedder(nn.Module):
             .reshape([num_batch, num_res, num_res, -1])
         )
 
-    def forward(self, s, t, sc_t, p_mask):
+    def forward(self, node_embed, translations, trans_sc, node_mask, edge_embed=None, edge_mask=None):
         """
-        s: [B,L,D]
-        t: [B,L,3]
-        sc_t: [B,L,3]
-        p_mask: [B,L,L] or [B,L]
+        node_embed: [B,L,D]
+        translations: [B,L,3]
+        trans_sc: [B,L,3]
+        node_mask: [B,L]
+        edge_embed: [B,L,L,F] (Optional) If not provided, will be computed from node embeddings and translations
+        edge_mask: [B,L,L] (Optional)  If not provided, will be inferred from node_mask
         """
-        if self.mode == "2d":
-            return self.fwd_2d(s, t, sc_t, p_mask)
+
+        if self.mode == "orig_no_bias" or self.mode == "flash_no_bias":
+            # No 2D bias
+            assert (
+                edge_embed is None and edge_mask is None
+            ), "edge_embed and edge_mask must be None for orig_no_bias and flash_no_bias modes"
+            edge_embed, z_factor_1, z_factor_2, edge_mask = None, None, None, None
+        elif self.mode == "orig_2d_bias":
+            if edge_mask is None:
+                # We infer edge mask from node mask
+                edge_mask = node_mask[:, None] * node_mask[:, :, None]
+            if edge_embed is None:
+                # We compute edge embeddings from node embeddings and translations
+                edge_embed = self.fwd_2d(node_embed, translations, trans_sc, edge_mask)  # 2d mode
+            edge_embed = edge_embed * edge_mask[..., None]
+            z_factor_1, z_factor_2 = None, None
+        elif self.mode == "flash_1d_bias":
+            # 1D bias option never materializes the 2D embeddings matrix
+            assert edge_embed is None and edge_mask is None, "edge_embed and edge_mask must be None for flash_1d_bias mode"
+            z_factor_1, z_factor_2 = self.fwd_1d(node_embed, translations, trans_sc, node_mask)  # 1d mode
+            edge_embed, edge_mask = None, None
+        elif self.mode == "flash_2d_factorize_bias":
+            # 2D bias option materializes the 2D embeddings matrix, either from node embeddings and translations or from edge embeddings
+            if edge_mask is None:
+                edge_mask = node_mask[:, None] * node_mask[:, :, None]
+            if edge_embed is None:
+                edge_embed = self.fwd_2d(node_embed, translations, trans_sc, edge_mask)  # 2d mode
+            z_factor_1, z_factor_2 = self.factorizer(edge_embed)
+            z_factor_1 = rearrange(z_factor_1, "(b d) n r -> b n r d", b=node_embed.shape[0])
+            z_factor_2 = rearrange(z_factor_2, "(b d) n r -> b n r d", b=node_embed.shape[0])
+            edge_embed, edge_mask = None, None
         else:
-            return self.fwd_1d(s, t, sc_t, p_mask)
+            raise ValueError(
+                f"Unknown edge embedder type: {self.mode}. Must be 'orig_no_bias', 'orig_2d_bias', 'flash_no_bias', 'flash_1d_bias', or 'flash_2d_factorize_bias'."
+            )
+
+        return edge_embed, z_factor_1, z_factor_2, edge_mask
 
     def fwd_1d(self, s, t, sc_t, p_mask):
         """

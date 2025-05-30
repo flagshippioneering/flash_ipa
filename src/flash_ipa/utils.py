@@ -62,3 +62,30 @@ def get_index_embedding(indices, embed_size, max_len=2056):
     pos_embedding_cos = torch.cos(indices[..., None] * math.pi / (max_len ** (2 * K[None] / embed_size))).to(indices.device)
     pos_embedding = torch.cat([pos_embedding_sin, pos_embedding_cos], axis=-1)
     return pos_embedding
+
+
+def check_config_ipa(ipa_conf, mode: str):
+    if mode == "orig_no_bias":
+        assert (
+            ipa_conf.c_z == 0 and ipa_conf.z_factor_rank == 0 and ipa_conf.use_flash_attn == False
+        ), "Expecting ipa_conf.c_z == 0 and ipa_conf.z_factor_rank == 0 and ipa_conf.use_flash_attn == False, but got {ipa_conf.c_z}, {ipa_conf.z_factor_rank}, {ipa_conf.use_flash_attn}."
+    elif mode == "orig_2d_bias":
+        assert (
+            ipa_conf.c_z > 0 and ipa_conf.z_factor_rank == 0 and ipa_conf.use_flash_attn == False
+        ), "Expecting ipa_conf.c_z > 0 and ipa_conf.z_factor_rank == 0 and ipa_conf.use_flash_attn == False, but got {ipa_conf.c_z}, {ipa_conf.z_factor_rank}, {ipa_conf.use_flash_attn}."
+    elif mode == "flash_no_bias":
+        assert (
+            ipa_conf.c_z == 0 and ipa_conf.z_factor_rank == 0 and ipa_conf.use_flash_attn == True
+        ), "Expecting ipa_conf.c_z == 0 and ipa_conf.z_factor_rank == 0 and ipa_conf.use_flash_attn == True, but got {ipa_conf.c_z}, {ipa_conf.z_factor_rank}, {ipa_conf.use_flash_attn}."
+    elif mode == "flash_1d_bias":
+        assert (
+            ipa_conf.c_z > 0 and ipa_conf.z_factor_rank > 0 and ipa_conf.use_flash_attn == True
+        ), "Expecting ipa_conf.c_z > 0 and ipa_conf.z_factor_rank > 0 and ipa_conf.use_flash_attn == True, but got {ipa_conf.c_z}, {ipa_conf.z_factor_rank}, {ipa_conf.use_flash_attn}."
+    elif mode == "flash_2d_factorize_bias":
+        assert (
+            ipa_conf.c_z > 0 and ipa_conf.z_factor_rank > 0 and ipa_conf.use_flash_attn == True
+        ), "Expecting ipa_conf.c_z > 0 and ipa_conf.z_factor_rank > 0 and ipa_conf.use_flash_attn == True, but got {ipa_conf.c_z}, {ipa_conf.z_factor_rank}, {ipa_conf.use_flash_attn}."
+    else:
+        raise ValueError(
+            f"Invalid mode: {mode}. Must be one of ['orig_no_bias', 'orig_2d_bias', 'flash_no_bias', 'flash_1d_bias', 'flash_2d_factorize_bias']."
+        )
