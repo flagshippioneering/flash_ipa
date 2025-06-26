@@ -23,7 +23,7 @@ attn_dtype_dict = {
 @dataclass
 class IPAConfig:
     use_flash_attn: bool = True
-    attn_dtype: str = "bfp16"  # "fp16", "bfp16", "fp32". For flash ipa, bfp16 or fp16. For original, fp32.
+    attn_dtype: str = "bf16"  # "fp16", "bf16", "fp32". For flash ipa, bf16 or fp16. For original, fp32.
     use_packed: bool = True
     c_s: int = 256
     c_z: int = 128
