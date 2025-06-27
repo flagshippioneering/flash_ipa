@@ -257,14 +257,19 @@ To manage environments efficiently, we use [uv](https://docs.astral.sh/uv/gettin
 
 ### As a python package in your uv environement
 ```bash
+uv pip install hatchling # Only if the following is not working because of missing hatchling module
 uv add "flash_ipa @ git+https://github.com/anonymous/flash_ipa"
+uv pip install flash-attn --no-build-isolation
 ```
 
 ### For developement
 ```bash
 git clone https://github.com/anonymous/flash_ipa
 cd flash_ipa
+uv venv
+uv pip install hatchling # Only if the following is not working because of missing hatchling module
 uv sync
+uv add flash-attn --no-build-isolation
 ```
 
 
