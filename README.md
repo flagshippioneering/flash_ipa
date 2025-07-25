@@ -277,14 +277,4 @@ uv add flash-attn --no-build-isolation
 
 This project is licensed under MIT License. See [LICENSE](LICENSE.txt) for more details.
 
-## Citation
 
-``` bash 
-@article{liu2025flashipa,
-  title={Flash Invariant Point Attention},
-  author={Liu, Andrew and Elaldi, Axel and Franklin, Nicholas T and Russell, Nathan and Atwal, Gurinder S and Ban, Yih-En A and Viessmann, Olivia},
-  journal={arXiv preprint arXiv:2505.11580},
-  year={2025},
-  url={https://arxiv.org/abs/2505.11580}
-}
-```
